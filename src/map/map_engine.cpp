@@ -179,7 +179,6 @@ auto MapEngine::init() -> Task<void>
     ShowInfo("do_init: loading spells");
     spell::LoadSpellList();
     mobSpellList::LoadMobSpellList();
-    automaton::LoadAutomatonSpellList();
     automaton::LoadAutomatonAbilities();
 
     guildutils::Initialize();

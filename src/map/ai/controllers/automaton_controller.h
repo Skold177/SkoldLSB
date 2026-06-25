@@ -24,6 +24,7 @@
 #include <common/types/maybe.h>
 
 #include "entities/automaton_entity.h"
+#include "sol/forward.hpp"
 
 #include "pet_controller.h"
 #include "spell.h"
@@ -47,14 +48,6 @@ struct AutomatonAbility
     uint16 skillLevel    = 0;
 };
 
-struct AutomatonSpell
-{
-    uint16                        skilllevel{ 0 };
-    uint8                         heads{ 0 };
-    xi::StatusEffect              enfeeble{ xi::StatusEffect::Ko };
-    IMMUNITY                      immunity{ IMMUNITY_NONE };
-    std::vector<xi::StatusEffect> removes;
-};
 
 class CAutomatonEntity;
 
@@ -79,12 +72,15 @@ protected:
 private:
     auto TryAction() -> bool;
     auto TryShieldBash() -> bool;
-    auto TrySpellcast(const CurrentManeuvers& maneuvers) -> bool;
-    auto TryHeal(const CurrentManeuvers& maneuvers) -> bool;
-    auto TryElemental(const CurrentManeuvers& maneuvers) -> bool;
-    auto TryEnfeeble(const CurrentManeuvers& maneuvers) -> bool;
-    auto TryStatusRemoval(const CurrentManeuvers& maneuvers) -> bool;
+    auto TrySpellcast() -> bool;
+    auto CastAutomatonSpell(const sol::table& result) -> bool;
+    auto TryMagicBurst() -> bool;
+    auto TryHeal() -> bool;
+    auto TryElemental() -> bool;
+    auto TryEnfeeble() -> bool;
+    auto TryStatusRemoval() -> bool;
     auto TryEnhance() -> bool;
+    auto TryDark() -> bool;
     auto TryTPMove() -> bool;
     auto TryRangedAttack() -> bool;
     auto TryAttachment() -> bool;
@@ -103,6 +99,7 @@ private:
     timer::duration      m_healCooldown{};
     timer::duration      m_enhanceCooldown{};
     timer::duration      m_statusCooldown{};
+    timer::duration      m_darkCooldown{};
     timer::duration      m_shieldbashCooldown{};
     static constexpr int m_ShieldBashAbility{ 1944 };
 
@@ -113,6 +110,7 @@ private:
     timer::time_point m_LastHealTime;
     timer::time_point m_LastEnhanceTime;
     timer::time_point m_LastStatusTime;
+    timer::time_point m_LastDarkTime;
     timer::time_point m_LastRangedTime;
     timer::time_point m_LastShieldBashTime;
 };
@@ -120,10 +118,6 @@ private:
 namespace automaton
 {
 
-void LoadAutomatonSpellList();
-bool CanUseSpell(CAutomatonEntity* PCaster, SpellID spellid);
-bool CanUseEnfeeble(CBattleEntity* PTarget, SpellID spell);
-auto FindNaSpell(CStatusEffect* PStatus) -> Maybe<SpellID>;
 void LoadAutomatonAbilities();
 
 }; // namespace automaton

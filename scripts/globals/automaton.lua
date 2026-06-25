@@ -45,7 +45,7 @@ local automatonModels =
     },
 }
 
-local maneuverList =
+xi.automaton.maneuverList =
 {
     [xi.jobAbility.FIRE_MANEUVER   ] = { effect = xi.effect.FIRE_MANEUVER,    element = xi.element.FIRE,    stat = xi.mod.STR },
     [xi.jobAbility.ICE_MANEUVER    ] = { effect = xi.effect.ICE_MANEUVER,     element = xi.element.ICE,     stat = xi.mod.INT },
@@ -89,9 +89,9 @@ xi.automaton.attachmentModifiers =
                                 { modifier = xi.mod.AUTO_SHIELD_BASH_DELAY,      values = {     0,     5,    10,    15 }, opticFiber = false }, },
     ['coiler'             ] = { { modifier = xi.mod.DOUBLE_ATTACK,               values = {     3,    10,    20,    30 }, opticFiber = true  }, },
     ['coiler_ii'          ] = { { modifier = xi.mod.DOUBLE_ATTACK,               values = {    10,    15,    25,    35 }, opticFiber = true  }, },
-    ['damage_gauge'       ] = { { modifier = xi.mod.AUTO_HEALING_THRESHOLD,      values = {    50,    60,    70,    80 }, opticFiber = false },
+    ['damage_gauge'       ] = { { modifier = xi.mod.AUTO_HEALING_THRESHOLD,      values = {    10,    10,    10,    10 }, opticFiber = false },
                                 { modifier = xi.mod.AUTO_HEALING_DELAY,          values = {     3,     3,     3,     3 }, opticFiber = false }, },
-    ['damage_gauge_ii'    ] = { { modifier = xi.mod.AUTO_HEALING_THRESHOLD,      values = {    60,    70,    80,    90 }, opticFiber = false },
+    ['damage_gauge_ii'    ] = { { modifier = xi.mod.AUTO_HEALING_THRESHOLD,      values = {    20,    20,    20,    20 }, opticFiber = false },
                                 { modifier = xi.mod.AUTO_HEALING_DELAY,          values = {     3,     3,     3,     3 }, opticFiber = false }, },
     ['drum_magazine'      ] = { { modifier = xi.mod.AUTO_RANGED_DELAY,           values = {     3,     6,     9,    15 }, opticFiber = true  }, },
     ['dynamo'             ] = { { modifier = xi.mod.CRITHITRATE,                 values = {     3,     5,     7,     9 }, opticFiber = true  }, },
@@ -567,7 +567,7 @@ xi.automaton.onUseManeuver = function(player, target, ability, action)
         return
     end
 
-    local maneuverInfo = maneuverList[ability:getID()]
+    local maneuverInfo = xi.automaton.maneuverList[ability:getID()]
     local element      = maneuverInfo.element - 1
     local burdenValue  = getAddBurdenValue(player, maneuverInfo.element, maneuverInfo.stat)
     local overload     = target:addBurden(element, burdenValue)
