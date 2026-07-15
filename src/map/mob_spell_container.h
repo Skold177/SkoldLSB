@@ -35,6 +35,8 @@ class CMobSpellContainer
 public:
     CMobSpellContainer(CMobEntity* PMob);
 
+    static void LoadEffectMap();
+
     // These methods return a random spell
     Maybe<SpellID> GetAggroSpell();  // -ga spell, dia, bio, paralyze, silence, blind
     Maybe<SpellID> GetGaSpell();     // AoE damage spells, stonega, diaga
@@ -45,6 +47,7 @@ public:
     Maybe<SpellID> GetNaSpell();     // silena, blindna etc
     Maybe<SpellID> GetSevereSpell(); // select spells like death, impact, meteor
     Maybe<SpellID> GetSpell();       // return a random spell
+    CBattleEntity* FindCastTarget(SpellID spellId);
 
     bool IsAnySpellAvailable();
 

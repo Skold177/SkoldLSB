@@ -86,6 +86,7 @@
 #include "map/navmesh/navmesh.h"
 #include "map_engine.h"
 #include "mob_modifier.h"
+#include "mob_spell_container.h"
 #include "mobskill.h"
 #include "monstrosity.h"
 #include "packets/s2c/0x039_mapschedulor.h"
@@ -505,6 +506,8 @@ void init(IPP mapIPP, bool isRunningInCI)
     }
 
     moduleutils::TryApplyRemainingLuaModules();
+
+    CMobSpellContainer::LoadEffectMap();
 
     filewatcher = std::make_unique<Filewatcher>(std::vector<std::string>{ "scripts", "modules", "settings" });
 

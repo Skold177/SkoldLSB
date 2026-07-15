@@ -618,7 +618,14 @@ auto CMobController::TryCastSpell() -> bool
     // Target logic.
     CBattleEntity* PCastTarget = nullptr;
 
-    if (PSpell->getValidTarget() & TARGET_SELF)
+    // Cast buffs only on entities that are missing the buff.
+    CBattleEntity* PBuffTarget = PSpell->isBuff() ? PMob->SpellContainer->FindCastTarget(chosenSpellId.value()) : nullptr;
+
+    if (PBuffTarget)
+    {
+        PCastTarget = PBuffTarget;
+    }
+    else if (PSpell->getValidTarget() & TARGET_SELF)
     {
         PCastTarget = PMob;
     }
@@ -640,7 +647,7 @@ auto CMobController::TryCastSpell() -> bool
 
     // Perform cast. If there is a valid target override, cast at that target, otherwise cast normally.
     // We need this because CastSpell has its own targetfind and PCastTarget is not used for it.
-    if (maybeTargetOverride.has_value() && PCastTarget)
+    if (PCastTarget && (maybeTargetOverride.has_value() || PBuffTarget))
     {
         Cast(PCastTarget->targid, chosenSpellId.value());
     }

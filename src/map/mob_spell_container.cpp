@@ -20,19 +20,90 @@
 */
 
 #include <algorithm>
+#include <unordered_map>
+
+#include "common/utils.h"
 
 #include "entities/pet_entity.h"
 
+#include "ai/ai_container.h"
+#include "lua/luautils.h"
 #include "mob_modifier.h"
 #include "mob_spell_container.h"
+#include "party.h"
 #include "recast_container.h"
+#include "status_effect.h"
 #include "status_effect_container.h"
 #include "utils/battleutils.h"
+
+namespace
+{
+    struct effectMap
+    {
+        uint8            tier;   // Tier of the effect. Higher tiers override lower tiers.
+        xi::StatusEffect effect; // Effect the spell grants.
+        xi::StatusEffect otherEffects = xi::StatusEffect::None; // Other effects that block reapplication. Ex: Enfire / Enfire II
+    };
+
+    std::unordered_map<SpellID, effectMap> buffLines;
+
+    // True if casting this line on PTarget would grant something: the effect is
+    // missing, or present at a known lower tier (higher tiers override lower).
+    bool entityNeedsEffect(CBattleEntity* PTarget, const effectMap& line)
+    {
+        for (const auto effect : { line.effect, line.otherEffects })
+        {
+            if (effect == xi::StatusEffect::None)
+            {
+                continue;
+            }
+
+            if (const auto* PExisting = PTarget->StatusEffectContainer->GetStatusEffect(effect))
+            {
+                return PExisting->GetTier() != 0 && PExisting->GetTier() < line.tier;
+            }
+        }
+        return true;
+    }
+
+} // namespace
 
 CMobSpellContainer::CMobSpellContainer(CMobEntity* PMob)
 {
     m_PMob      = PMob;
     m_hasSpells = false;
+}
+
+void CMobSpellContainer::LoadEffectMap()
+{
+    buffLines.clear();
+
+    const sol::object mapObj = lua["xi"]["data"]["effectMap"]["key"];
+    if (mapObj.get_type() != sol::type::table)
+    {
+        ShowError("LoadEffectMap: xi.data.effectMap.key is missing; buff reapplication checks disabled!");
+        return;
+    }
+
+    for (const auto& [key, value] : mapObj.as<sol::table>())
+    {
+        if (key.get_type() != sol::type::number || value.get_type() != sol::type::table)
+        {
+            ShowWarning("LoadEffectMap: skipping malformed entry in xi.data.effectMap.key");
+            continue;
+        }
+
+        const auto row = value.as<sol::table>();
+
+        effectMap line{};
+        line.tier         = row.get<uint8>(1);
+        line.effect       = static_cast<xi::StatusEffect>(row.get<uint16>(2));
+        line.otherEffects = static_cast<xi::StatusEffect>(row.get_or(3, static_cast<uint16>(xi::StatusEffect::None)));
+
+        buffLines[static_cast<SpellID>(key.as<uint16>())] = line;
+    }
+
+    ShowInfo("LoadEffectMap: %u buff lines loaded from xi.data.effectMap", static_cast<uint32>(buffLines.size()));
 }
 
 void CMobSpellContainer::ClearSpells()
@@ -776,7 +847,11 @@ Maybe<SpellID> CMobSpellContainer::GetSpell()
 
     if (HasBuffSpells() && xirand::GetRandomNumber(100) < m_PMob->getMobMod(MOBMOD_BUFF_CHANCE))
     {
-        return GetBuffSpell();
+        if (const auto buffSpell = GetBuffSpell())
+        {
+            return buffSpell;
+        }
+        // every buff is already active; try a different school
     }
 
     // Grab whatever spell can be found
@@ -794,7 +869,10 @@ Maybe<SpellID> CMobSpellContainer::GetSpell()
 
     if (HasBuffSpells())
     {
-        return GetBuffSpell();
+        if (const auto buffSpell = GetBuffSpell())
+        {
+            return buffSpell;
+        }
     }
 
     if (HasGaSpells())
@@ -864,7 +942,87 @@ Maybe<SpellID> CMobSpellContainer::GetBuffSpell()
         return {};
     }
 
-    return m_buffList[xirand::GetRandomNumber(m_buffList.size())];
+    std::vector<SpellID> candidates;
+
+    // buff myself first; unmapped spells always qualify
+    for (const auto spellId : m_buffList)
+    {
+        const auto line = buffLines.find(spellId);
+        if (line == buffLines.end() || entityNeedsEffect(m_PMob, line->second))
+        {
+            candidates.emplace_back(spellId);
+        }
+    }
+
+    // nothing to buff on self; check party members in range
+    if (candidates.empty())
+    {
+        for (const auto spellId : m_buffList)
+        {
+            if (FindCastTarget(spellId) != nullptr)
+            {
+                candidates.emplace_back(spellId);
+            }
+        }
+    }
+
+    if (candidates.empty())
+    {
+        return {};
+    }
+
+    return candidates[xirand::GetRandomNumber(candidates.size())];
+}
+
+CBattleEntity* CMobSpellContainer::FindCastTarget(SpellID spellId)
+{
+    const auto buffLine = buffLines.find(spellId);
+
+    if (buffLine == buffLines.end())
+    {
+        return nullptr; // unknown spell; caller decides targeting
+    }
+
+    const auto needs = [&](CBattleEntity* PTarget)
+    {
+        return entityNeedsEffect(PTarget, buffLine->second);
+    };
+
+    if (needs(m_PMob))
+    {
+        return m_PMob;
+    }
+
+    const auto* PSpell = spell::GetSpell(spellId);
+    if (!PSpell || !(PSpell->getValidTarget() & TARGET_PLAYER_PARTY))
+    {
+        return nullptr;
+    }
+
+    const auto isValidAlly = [&](CBattleEntity* PMember)
+    {
+        return PMember && PMember != m_PMob && !PMember->isDead() &&
+               PMember->PAI->IsEngaged() == m_PMob->PAI->IsEngaged() &&
+               distance(m_PMob->loc.p, PMember->loc.p) <= PSpell->getRange() + m_PMob->modelHitboxSize + PMember->modelHitboxSize;
+    };
+
+    if (m_PMob->PMaster && isValidAlly(m_PMob->PMaster) && needs(m_PMob->PMaster))
+    {
+        return m_PMob->PMaster;
+    }
+
+    if (m_PMob->PParty)
+    {
+        for (auto* PMember : m_PMob->PParty->members)
+        {
+            if (isValidAlly(PMember) && needs(PMember))
+            {
+                return PMember;
+            }
+        }
+    }
+
+    return nullptr;
 }
 
 Maybe<SpellID> CMobSpellContainer::GetDebuffSpell()
@@ -924,9 +1082,7 @@ Maybe<SpellID> CMobSpellContainer::GetNaSpell()
         return SpellID::Poisona;
     }
 
-    // viruna? whatever ignore
-    // silena ignore
-    // stona ignore
+    // viruna, silena and stona are not handled
 
     return {};
 }
