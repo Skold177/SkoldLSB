@@ -40,29 +40,40 @@ namespace
 {
     struct effectMap
     {
-        uint8            tier;   // Tier of the effect. Higher tiers override lower tiers.
-        xi::StatusEffect effect; // Effect the spell grants.
-        xi::StatusEffect otherEffects = xi::StatusEffect::None; // Other effects that block reapplication. Ex: Enfire / Enfire II
+        uint8                         tier;         // Tier of the effect. Higher tiers override lower tiers.
+        xi::StatusEffect              effect;       // Effect the spell grants.
+        std::vector<xi::StatusEffect> otherEffects; // Other effects that block reapplication. Ex: any en-spell blocks every en-spell.
     };
 
     std::unordered_map<SpellID, effectMap> buffLines;
 
-    // True if casting this line on PTarget would grant something: the effect is
-    // missing, or present at a known lower tier (higher tiers override lower).
+    // True if casting this line on PTarget would grant something: no effect in the
+    // line is present, or those present are at a known lower tier (higher overrides lower).
     bool entityNeedsEffect(CBattleEntity* PTarget, const effectMap& line)
     {
-        for (const auto effect : { line.effect, line.otherEffects })
+        const auto isBlockedBy = [&](xi::StatusEffect effect)
         {
-            if (effect == xi::StatusEffect::None)
-            {
-                continue;
-            }
-
             if (const auto* PExisting = PTarget->StatusEffectContainer->GetStatusEffect(effect))
             {
-                return PExisting->GetTier() != 0 && PExisting->GetTier() < line.tier;
+                // Unknown (0) tiers block; only known lower tiers can be overridden.
+                return PExisting->GetTier() == 0 || PExisting->GetTier() >= line.tier;
+            }
+            return false;
+        };
+
+        if (isBlockedBy(line.effect))
+        {
+            return false;
+        }
+
+        for (const auto effect : line.otherEffects)
+        {
+            if (isBlockedBy(effect))
+            {
+                return false;
             }
         }
+
         return true;
     }
 
@@ -96,9 +107,25 @@ void CMobSpellContainer::LoadEffectMap()
         const auto row = value.as<sol::table>();
 
         effectMap line{};
-        line.tier         = row.get<uint8>(1);
-        line.effect       = static_cast<xi::StatusEffect>(row.get<uint16>(2));
-        line.otherEffects = static_cast<xi::StatusEffect>(row.get_or(3, static_cast<uint16>(xi::StatusEffect::None)));
+        line.tier   = row.get<uint8>(1);
+        line.effect = static_cast<xi::StatusEffect>(row.get<uint16>(2));
+
+        // Third column is optional: a single effect or a list of effects
+        const auto blockers = row.get<sol::object>(3);
+        if (blockers.is<sol::table>())
+        {
+            for (const auto& entry : blockers.as<sol::table>())
+            {
+                if (entry.second.get_type() == sol::type::number)
+                {
+                    line.otherEffects.emplace_back(static_cast<xi::StatusEffect>(entry.second.as<uint16>()));
+                }
+            }
+        }
+        else if (blockers.get_type() == sol::type::number)
+        {
+            line.otherEffects.emplace_back(static_cast<xi::StatusEffect>(blockers.as<uint16>()));
+        }
 
         buffLines[static_cast<SpellID>(key.as<uint16>())] = line;
     }
