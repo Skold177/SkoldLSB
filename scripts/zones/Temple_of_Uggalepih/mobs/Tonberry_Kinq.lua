@@ -23,6 +23,22 @@ entity.phList =
     [ID.mob.TONBERRY_KINQ - 2] = ID.mob.TONBERRY_KINQ, -- Confirmed on retail
 }
 
+local function tryResummonPet(mob)
+    local pet = mob:getPet()
+
+    if not pet then
+        return
+    end
+
+    if pet:isAlive() then
+        return
+    end
+
+    if GetSystemTime() >= mob:getLocalVar('petSummonTime') then
+        xi.mob.callPets(mob, nil, { callPetJob = xi.job.SMN, inactiveTime = 3000, superLink = true, dieWithOwner = true, maxSpawns = 1 })
+    end
+end
+
 entity.onMobInitialize = function(mob)
     mob:setMobMod(xi.mobMod.NO_MOVE, 1)
 
@@ -34,6 +50,15 @@ end
 
 entity.onMobSpawn = function(mob)
     mob:setMobMod(xi.mobMod.BASE_DAMAGE_MULTIPLIER, 150)
+    mob:setLocalVar('petSummonTime', GetSystemTime() + math.randomInt(15, 30))
+end
+
+entity.onMobRoam = function(mob)
+    tryResummonPet(mob)
+end
+
+entity.onMobFight = function(mob, target)
+    tryResummonPet(mob)
 end
 
 entity.onMobEngage = function(mob, target)

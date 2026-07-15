@@ -15,6 +15,22 @@ local cryptonberrySpecials =
     [xi.job.THF] = xi.mobSkill.PERFECT_DODGE_1,
 }
 
+local function tryResummonPet(mob)
+    local pet = mob:getPet()
+
+    if not pet then
+        return
+    end
+
+    if pet:isAlive() then
+        return
+    end
+
+    if GetSystemTime() >= mob:getLocalVar('petSummonTime') then
+        xi.mob.callPets(mob, nil, { callPetJob = xi.job.SMN, inactiveTime = 3000, superLink = true, dieWithOwner = true, maxSpawns = 1 })
+    end
+end
+
 entity.onMobInitialize = function(mob)
     xi.pet.setMobPet(mob, 1, 'Tonberrys_Elemental')
 
@@ -27,9 +43,16 @@ entity.onMobSpawn = function(mob)
     mob:addImmunity(xi.immunity.SILENCE)
     -- assassins and executor have special 2hr logic thus use local vars to track
     mob:setLocalVar('twoHourThreshold', math.randomInt(20, 75))
+    mob:setLocalVar('petSummonTime', GetSystemTime() + math.randomInt(15, 30))
+end
+
+entity.onMobRoam = function(mob)
+    tryResummonPet(mob)
 end
 
 entity.onMobFight = function(mob, target)
+    tryResummonPet(mob)
+
     -- mob 2hr was triggered by executor death
     if
         mob:getLocalVar('triggerTwoHour') == 1 and

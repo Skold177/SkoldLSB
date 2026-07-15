@@ -63,6 +63,22 @@ entity.spawnPoints =
     { x = -103.268, y = -72.000, z =   96.397 }
 }
 
+local function tryResummonPet(mob)
+    local pet = mob:getPet()
+
+    if not pet then
+        return
+    end
+
+    if pet:isAlive() then
+        return
+    end
+
+    if GetSystemTime() >= mob:getLocalVar('petSummonTime') then
+        xi.mob.callPets(mob, nil, { callPetJob = xi.job.SMN, inactiveTime = 3000, superLink = true, dieWithOwner = true, maxSpawns = 1 })
+    end
+end
+
 entity.onMobInitialize = function(mob)
     xi.pet.setMobPet(mob, 1, 'Yagudos_Elemental')
     mob:setMobMod(xi.mobMod.ADD_EFFECT, 1)
@@ -74,6 +90,15 @@ entity.onMobSpawn = function(mob)
     mob:setMod(xi.mod.PARALYZE_RES_RANK, 8)
     mob:setMod(xi.mod.SLOW_RES_RANK, 8)
     mob:setMod(xi.mod.SILENCE_RES_RANK, 10)
+    mob:setLocalVar('petSummonTime', GetSystemTime() + math.randomInt(15, 30))
+end
+
+entity.onMobRoam = function(mob)
+    tryResummonPet(mob)
+end
+
+entity.onMobFight = function(mob, target)
+    tryResummonPet(mob)
 end
 
 entity.onMobEngage = function(mob, target)

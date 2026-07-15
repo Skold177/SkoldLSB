@@ -16,4 +16,16 @@ entity.onMobEngage = function(mob)
     mob:setMagicCastingEnabled(true) -- This will prevent Gaki from using blaze spikes before the fight starts
 end
 
+entity.onMobDeath = function(mob, player, optParams)
+    if optParams.isKiller or optParams.noKiller then
+        local master = mob:getMaster()
+
+        if not master then
+            return
+        end
+
+        master:setLocalVar('petSummonTime', GetSystemTime() + math.randomInt(35, 70))
+    end
+end
+
 return entity

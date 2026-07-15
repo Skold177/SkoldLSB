@@ -790,21 +790,10 @@ INSERT INTO `mob_spell_lists` VALUES ('Kindred_SMN',31,292,1,255); -- thunder_sp
 INSERT INTO `mob_spell_lists` VALUES ('Kindred_SMN',31,295,1,255); -- dark_spirit (1~255)
 
 -- Tonberry_SMN (32)
-INSERT INTO `mob_spell_lists` VALUES ('Tonberry_SMN',32,288,1,255); -- fire_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Tonberry_SMN',32,293,1,255); -- water_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Tonberry_SMN',32,294,1,255); -- light_spirit (1~255)
 
 -- Lamiae_SMN (33)
-INSERT INTO `mob_spell_lists` VALUES ('Lamiae_SMN',33,289,1,255); -- ice_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Lamiae_SMN',33,293,1,255); -- water_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Lamiae_SMN',33,295,1,255); -- dark_spirit (1~255)
 
 -- Fomor_SMN (34)
-INSERT INTO `mob_spell_lists` VALUES ('Fomor_SMN',34,288,1,255); -- fire_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Fomor_SMN',34,289,1,255); -- ice_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Fomor_SMN',34,290,1,255); -- air_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Fomor_SMN',34,291,1,255); -- earth_spirit (1~255)
-INSERT INTO `mob_spell_lists` VALUES ('Fomor_SMN',34,292,1,255); -- thunder_spirit (1~255)
 
 -- Aern_SMN (35)
 INSERT INTO `mob_spell_lists` VALUES ('Aern_SMN',35,288,1,255); -- fire_spirit (1~255)
@@ -1628,7 +1617,6 @@ INSERT INTO `mob_spell_lists` VALUES ('Avatar_SMN',141,303,1,255); -- ramuh (1~2
 -- Free (142)
 
 -- Onki (143)
-INSERT INTO `mob_spell_lists` VALUES ('Onki',143,288,1,255); -- fire_spirit (1~255)
 
 -- Bahamut (144)
 INSERT INTO `mob_spell_lists` VALUES ('Bahamut',144,5,1,255);   -- cure_v (1~255)

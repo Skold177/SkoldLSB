@@ -33,4 +33,16 @@ entity.onMobSpellChoose = function(mob, target, spellId)
     return spellList[math.randomInt(1, #spellList)]
 end
 
+entity.onMobDeath = function(mob, player, optParams)
+    if optParams.isKiller or optParams.noKiller then
+        local master = mob:getMaster()
+
+        if not master then
+            return
+        end
+
+        master:setLocalVar('petSummonTime', GetSystemTime() + math.randomInt(35, 70))
+    end
+end
+
 return entity
