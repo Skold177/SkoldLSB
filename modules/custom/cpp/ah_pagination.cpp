@@ -8,18 +8,21 @@
 
 #include "map/utils/moduleutils.h"
 
+#include "common/database.h"
+#include "common/logging.h"
+#include "common/macros.h"
+#include "common/settings.h"
 #include "common/timer.h"
+#include "common/tracy.h"
 
+#include "map/entities/char_entity.h"
 #include "map/enums/chat_message_type.h"
-#include "map/map_session.h"
-#include "map/packet_system.h"
 #include "map/packets/basic.h"
 #include "map/packets/s2c/0x017_chat_std.h"
-#include "map/zone.h"
+#include "packets/c2s/0x04e_auc.h"
 #include "packets/s2c/0x04c_auc.h"
 
-#include <functional>
-#include <numeric>
+#include <algorithm>
 
 class AHPaginationModule : public CPPModule
 {
@@ -27,30 +30,26 @@ class AHPaginationModule : public CPPModule
     {
         TracyZoneScoped;
 
-        const auto originalAHListLimit = settings::get<uint32>("map.AH_LIST_LIMIT");
-        if (originalAHListLimit != 0 && originalAHListLimit <= 7)
+        // Auction house limit is defined as uint8 in core.
+        const auto originalAHListLimit = settings::get<uint8>("map.AH_LIST_LIMIT");
+        if (originalAHListLimit != 0 && originalAHListLimit <= clientSellSlots_)
         {
-            ShowWarning("[AH PAGES] AH_LIST_LIMIT is already set to %i. AH_LIST_LIMIT <= 7 is handled by the client. This module isn't required.", originalAHListLimit);
+            ShowWarningFmt("[AH PAGES] AH_LIST_LIMIT is already set to {}. AH_LIST_LIMIT <= 7 is handled by the client. This module isn't required.", originalAHListLimit);
             return;
         }
 
-        totalPages_ = originalAHListLimit == 0 ? 99 : (originalAHListLimit / 6U) + 1;
-        ShowInfo("[AH PAGES] AH_LIST_LIMIT is set to %i. Enabling pagination of %i pages with %i items per page.", originalAHListLimit, totalPages_, itemsPerPage_);
+        enabled_ = true;
+        ShowInfoFmt("[AH PAGES] AH_LIST_LIMIT is set to {}. Enabling pagination with {} items per page.", originalAHListLimit, itemsPerPage_);
     }
 
     auto OnIncomingPacket(MapSession* session, CCharEntity* PChar, CBasicPacket& packet) -> bool override
     {
-        if (packet.getType() != 0x04E)
+        if (!enabled_ || packet.getType() != static_cast<uint16_t>(PacketC2S::GP_CLI_COMMAND_AUC))
         {
             return false;
         }
 
-        if (PChar->m_GMlevel == 0 && !PChar->loc.zone->CanUseMisc(xi::ZoneMisc::AuctionHouse))
-        {
-            ShowWarning("[AH PAGES] %s is trying to use the auction house in a disallowed zone [%s]", PChar->getName(), PChar->loc.zone->getName());
-            return true;
-        }
-
+        // Zone check is enforced here.
         const auto typedPacket = packet.as<GP_CLI_COMMAND_AUC>();
 
         // Only intercept for action 0x05: Open List Of Sales / Wait
@@ -63,101 +62,102 @@ class AHPaginationModule : public CPPModule
         const timer::time_point curTick = timer::now();
         if (curTick < PChar->m_AHHistoryTimestamp + 1500ms)
         {
-            PChar->pushPacket<GP_SERV_COMMAND_AUC>(typedPacket->Command, 246, 0, 0, 0, 0); // try again in a little while msg
+            PChar->pushPacket<GP_SERV_COMMAND_AUC>(typedPacket->Command, 246, 0, 0, 0, 0); // Please try again in a little while message
             return true;
         }
 
-        // Not const, because we're going to increment it below
-        // This will get wiped on zoning
+        // Get the current page the player is on.
         auto currentAHPage = PChar->GetLocalVar("AH_PAGE");
 
-        // Will only show the first time you access the AH until you zone again.
-        // Since we do rollover of pages inline below.
-        // This is also good for performance to not hammer the db completely.
+        // Get the number of items player currently has for sale.
+        const auto ahListings = [&]() -> uint32
+        {
+            const auto rset = db::preparedStmt("SELECT COUNT(*) "
+                                               "FROM auction_house "
+                                               "WHERE seller = ? AND sale = 0",
+                                               PChar->id);
+            FOR_DB_SINGLE_RESULT(rset)
+            {
+                return rset->get<uint32>(0);
+            }
+
+            return 0;
+        }();
+
+        // Shown when player opens the auction house for the first time, or when they cycle back to page 1.
         if (currentAHPage == 0) // Page "1"
         {
-            // Get the current number of items the player has for sale
-            const auto ahListings = [&]() -> uint32
-            {
-                const auto rset = db::preparedStmt("SELECT COUNT(*) "
-                                                   "FROM auction_house "
-                                                   "WHERE seller = ? AND sale = 0",
-                                                   PChar->id);
-                FOR_DB_SINGLE_RESULT(rset)
-                {
-                    return rset->get<uint32>(0);
-                }
-
-                return 0;
-            }();
-            PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, fmt::format("You have {} items listed for sale.", ahListings));
+            PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, fmt::format("You have {} item{} listed for sale.", ahListings, ahListings == 1 ? "" : "s"));
         }
 
-        PChar->SetLocalVar("AH_PAGE", (currentAHPage + 1) % totalPages_);
+        const auto totalPages = std::max<uint32>(1, (ahListings + itemsPerPage_ - 1) / itemsPerPage_);
+
+        PChar->SetLocalVar("AH_PAGE", (currentAHPage + 1) % totalPages);
 
         PChar->m_ah_history.clear();
         PChar->m_AHHistoryTimestamp = curTick;
         PChar->pushPacket<GP_SERV_COMMAND_AUC>(typedPacket->Command);
 
-        // Not const, because we're possibly going to overwrite it later
         auto rset = db::preparedStmt("SELECT itemid, price, stack "
                                      "FROM auction_house "
-                                     "WHERE seller = ? and sale = 0 "
+                                     "WHERE seller = ? AND sale = 0 "
                                      "ORDER BY id ASC "
                                      "LIMIT ? OFFSET ?",
                                      PChar->id,
-                                     static_cast<uint32>(itemsPerPage_),
-                                     static_cast<uint32>(currentAHPage * itemsPerPage_));
+                                     itemsPerPage_,
+                                     currentAHPage * itemsPerPage_);
 
-        // If we get back 0 results, we're at the end of the list. We should redo the query and reset to page 1 (OFFSET 0)
-        if (rset && rset->rowsCount() == 0)
+        if ((!rset || rset->rowsCount() == 0) && currentAHPage != 0)
         {
-            PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, fmt::format("No results for page: {} of {}.", currentAHPage + 1, totalPages_));
+            PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, "Your listings changed. Returning to page 1.");
 
             // Reset to Page 1
-            // Overwrite the original rset here
             rset = db::preparedStmt("SELECT itemid, price, stack "
                                     "FROM auction_house "
-                                    "WHERE seller = ? and sale = 0 "
+                                    "WHERE seller = ? AND sale = 0 "
                                     "ORDER BY id ASC "
                                     "LIMIT ? OFFSET 0",
                                     PChar->id,
-                                    static_cast<uint32>(itemsPerPage_));
+                                    itemsPerPage_);
 
             // Show Page 1 this time
             currentAHPage = 0;
 
             // Prepare Page 2 for next load
-            PChar->SetLocalVar("AH_PAGE", currentAHPage + 1);
+            PChar->SetLocalVar("AH_PAGE", (currentAHPage + 1) % totalPages);
         }
 
-        // TODO: Don't use totalPages_ here, use the actual number of pages of results.
-        // Current (10 items): Current page: 2 of 99. Showing 4 items.
-        // Desired (10 items): Current page: 2 of 2. Showing 4 items.
-        PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, fmt::format("Current page: {} of {}. Showing {} items.", currentAHPage + 1, totalPages_, rset->rowsCount()));
+        const auto rowCount = rset ? rset->rowsCount() : 0;
+        PChar->pushPacket<GP_SERV_COMMAND_CHAT_STD>(PChar, MESSAGE_SYSTEM_3, fmt::format("Current page: {} of {}. Showing {} item{}.", currentAHPage + 1, totalPages, rowCount, rowCount == 1 ? "" : "s"));
 
-        FOR_DB_MULTIPLE_RESULTS(rset)
+        if (rset)
         {
-            PChar->m_ah_history.emplace_back(AuctionHistory_t{
-                .itemid = rset->get<uint16>("itemid"),
-                .stack  = rset->get<uint8>("stack"),
-                .price  = rset->get<uint32>("price"),
-                .status = 0,
-            });
+            FOR_DB_MULTIPLE_RESULTS(rset)
+            {
+                PChar->m_ah_history.emplace_back(AuctionHistory_t{
+                    .itemid = rset->get<uint16>("itemid"),
+                    .stack  = rset->get<uint8>("stack"),
+                    .price  = rset->get<uint32>("price"),
+                    .status = 0,
+                });
+            }
         }
 
-        const auto totalItemsOnAh = PChar->m_ah_history.size();
-        for (size_t slot = 0; slot < totalItemsOnAh; slot++)
+        for (uint8 slot = 0; slot < clientSellSlots_; slot++)
         {
-            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotCancel, static_cast<uint8>(slot), PChar);
+            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotCancel, slot, PChar);
         }
 
         return true;
     }
 
+    // The client's Sales Status window only has 7 sell slots.
+    static constexpr uint8 clientSellSlots_{ 7 };
+
     // If this is set to 7, the client won't let you put up more than 7 items. So, 6.
-    uint8 itemsPerPage_{ 6u };
-    uint8 totalPages_{ 1 };
+    static constexpr uint32 itemsPerPage_{ 6 };
+
+    bool enabled_{ false };
 };
 
 REGISTER_CPP_MODULE(AHPaginationModule);
