@@ -20,6 +20,7 @@ return {
     ['Eugie']               = { event = 351 },
     ['Four_of_Clubs']       = { event = 218 },
     ['Gold_Skull']          = { event = 43 },
+    ['Goltata']             = { event = 232 },
     ['Gomada-Vulmada']      = { event = 363 },
     ['Griffyth']            = { event = 352 },
     ['Hakkuru-Rinkuru']     = { event = 224 },
@@ -28,6 +29,7 @@ return {
     ['Josef']               = { event = 45 },
     ['Josefina']            = { event = 189 },
     ['Kohlo-Lakolo']        = { event = 361 },
+    ['Kunchichi']           = { event = 228 },
     ['Laughing_Lizard']     = { event = 618 },
     ['Maabu-Sonbu']         = { event = 227 },
     ['Machichi']            = { event = 325 },
@@ -82,6 +84,7 @@ return {
     ['Wau_Kaatapoh']        = { event = 195 },
     ['Wynne']               = { event = 356 },
     ['Yafa_Yaa']            = { event = 365 },
+    ['Yaman-Hachuman']      = { event = 233 },
     ['Yapam-Alpam']         = { event = 326 },
     ['Yuhito-Kubhito']      = { event = 447 },
 }

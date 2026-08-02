@@ -10,8 +10,4 @@ entity.onSpawn = function(npc)
     npcUtil.castingAnimation(npc, xi.magic.spellGroup.BLACK, 16)
 end
 
-entity.onTrigger = function(player, npc)
-    player:startEvent(228)
-end
-
 return entity
