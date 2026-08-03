@@ -6454,6 +6454,7 @@ xi.item =
     EVOKERS_DOUBLET_P1                  = 14487,
     HOMAM_CORAZZA                       = 14488,
     NASHIRA_MANTEEL                     = 14489,
+    HEALING_MAIL                        = 14494,
     WARRIORS_LORICA_P1                  = 14500,
     MELEE_CYCLAS_P1                     = 14501,
     CLERICS_BLIAUT_P1                   = 14502,
