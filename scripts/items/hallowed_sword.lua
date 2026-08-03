@@ -8,16 +8,20 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENLIGHT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.HALLOWED_SWORD) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENLIGHT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.HALLOWED_SWORD) then
         target:delStatusEffect(xi.effect.ENLIGHT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.HALLOWED_SWORD)
     end
 
     return 0
 end
 
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENLIGHT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.HALLOWED_SWORD)
+end
+
 itemObject.onItemUse = function(target, user)
     if target:hasEquipped(xi.item.HALLOWED_SWORD) then
-        target:addStatusEffect(xi.effect.ENLIGHT, { duration = 180, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.HALLOWED_SWORD })
+        target:addStatusEffect(xi.effect.ENLIGHT, { duration = 180, origin = user, flag = xi.effectFlag.ON_ZONE, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.HALLOWED_SWORD })
     end
 end
 

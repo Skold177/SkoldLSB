@@ -8,11 +8,15 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.AUGMENTING_BELT) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.AUGMENTING_BELT) then
         target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.AUGMENTING_BELT)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.AUGMENTING_BELT)
 end
 
 itemObject.onItemUse = function(target, user)

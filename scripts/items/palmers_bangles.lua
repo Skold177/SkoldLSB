@@ -8,7 +8,7 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PALMERS_BANGLES) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PALMERS_BANGLES) then
         target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PALMERS_BANGLES)
     end
 

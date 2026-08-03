@@ -1,6 +1,6 @@
 -----------------------------------
 -- ID: 15870
--- Item: maharajas_belt
+-- Item: Maharaja's Belt
 -- Item Effect: AGI +10
 -- Duration: 60 seconds
 -----------------------------------
@@ -8,11 +8,15 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MAHARAJAS_BELT) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MAHARAJAS_BELT) then
         target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MAHARAJAS_BELT)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MAHARAJAS_BELT)
 end
 
 itemObject.onItemUse = function(target, user)

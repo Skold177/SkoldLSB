@@ -8,7 +8,7 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PROMINENCE_SWORD) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PROMINENCE_SWORD) then
         target:delStatusEffect(xi.effect.ENFIRE, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PROMINENCE_SWORD)
     end
 
@@ -31,6 +31,14 @@ itemObject.onItemUse = function(target, user)
 
         target:addStatusEffect(effect, { power = potency, duration = 180, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.PROMINENCE_SWORD })
     end
+end
+
+itemObject.onEffectGain = function(target, effect)
+    effect:addMod(xi.mod.ENSPELL, xi.element.FIRE)
+    effect:addMod(xi.mod.ENSPELL_DMG, effect:getPower())
+end
+
+itemObject.onEffectLose = function(target, effect)
 end
 
 return itemObject

@@ -1,17 +1,22 @@
 -----------------------------------
 -- ID: 15462
 -- Item: Talisman Obi
--- Effect: 3Min, MP+12 Enmity-2
+-- Item Effect: MP+12 / Enmity-2
+-- Duration: 30 Minutes
 -----------------------------------
 ---@type TItem
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.TALISMAN_OBI) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.TALISMAN_OBI) then
         target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.TALISMAN_OBI)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.TALISMAN_OBI)
 end
 
 itemObject.onItemUse = function(target, user)

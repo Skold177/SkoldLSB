@@ -1,6 +1,6 @@
 -----------------------------------
 -- ID: 15505
--- Item: dhalmel_whistle
+-- Item: Dhalmel Whistle
 -- Item Effect: AGI +6
 -- Duration: 3 minutes
 -----------------------------------
@@ -8,16 +8,20 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DHALMEL_WHISTLE) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENCHANTMENT, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DHALMEL_WHISTLE) then
         target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DHALMEL_WHISTLE)
     end
 
     return 0
 end
 
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DHALMEL_WHISTLE)
+end
+
 itemObject.onItemUse = function(target, user)
     if target:hasEquipped(xi.item.DHALMEL_WHISTLE) then
-        target:addStatusEffect(xi.effect.ENCHANTMENT, { duration = 180, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.DHALMEL_WHISTLE })
+        target:addStatusEffect(xi.effect.ENCHANTMENT, { duration = 180, origin = user, flag = xi.effectFlag.ON_ZONE, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.DHALMEL_WHISTLE })
     end
 end
 

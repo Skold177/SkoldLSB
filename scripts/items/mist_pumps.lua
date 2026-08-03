@@ -7,17 +7,21 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.EVASION_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MIST_PUMPS) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.EVASION_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MIST_PUMPS) then
         target:delStatusEffect(xi.effect.EVASION_BOOST, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MIST_PUMPS)
     end
 
     return 0
 end
 
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.EVASION_BOOST, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MIST_PUMPS)
+end
+
 itemObject.onItemUse = function(target, user)
     if target:hasEquipped(xi.item.MIST_PUMPS) then
         if not target:hasStatusEffect(xi.effect.EVASION_BOOST) then
-            target:addStatusEffect(xi.effect.EVASION_BOOST, { duration = 180, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.MIST_PUMPS })
+            target:addStatusEffect(xi.effect.EVASION_BOOST, { duration = 180, origin = user, flag = xi.effectFlag.ON_ZONE, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.MIST_PUMPS })
         else
             target:messageBasic(xi.msg.basic.NO_EFFECT)
         end

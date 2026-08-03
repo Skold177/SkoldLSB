@@ -2,6 +2,8 @@
 -- ID: 13693
 -- Item: Aries Mantle
 -- Enchantment: Sleep
+-- Duration: 90 Seconds
+-- Latent Effect: Regen+1 / Refresh+1 while asleep
 -----------------------------------
 ---@type TItem
 local itemObject = {}
@@ -18,7 +20,7 @@ itemObject.onItemUse = function(target, user)
     then
         target:messageBasic(xi.msg.basic.NO_EFFECT)
     else
-        target:addStatusEffect(xi.effect.SLEEP_I, { duration = 30, origin = user })
+        target:addStatusEffect(xi.effect.SLEEP_I, { duration = 90, origin = user })
     end
 end
 

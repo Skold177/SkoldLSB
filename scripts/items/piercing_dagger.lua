@@ -8,7 +8,7 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.ATTACK_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PIERCING_DAGGER) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ATTACK_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PIERCING_DAGGER) then
         target:delStatusEffect(xi.effect.ATTACK_BOOST, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.PIERCING_DAGGER)
     end
 
@@ -17,8 +17,15 @@ end
 
 itemObject.onItemUse = function(target, user)
     if target:hasEquipped(xi.item.PIERCING_DAGGER) then
-        target:addStatusEffect(xi.effect.ATTACK_BOOST, { power = 3, duration = 1800, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.PIERCING_DAGGER })
+        target:addStatusEffect(xi.effect.ATTACK_BOOST, { duration = 1800, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.PIERCING_DAGGER })
     end
+end
+
+itemObject.onEffectGain = function(target, effect)
+    effect:addMod(xi.mod.ATT, 3)
+end
+
+itemObject.onEffectLose = function(target, effect)
 end
 
 return itemObject

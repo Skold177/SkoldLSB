@@ -17,6 +17,10 @@ itemObject.onItemCheck = function(target, user)
     return 0
 end
 
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, xi.item.PELICAN_RING)
+end
+
 itemObject.onItemUse = function(target, user, item, action)
     local effect          = xi.effect.ENCHANTMENT
     local power           = 0

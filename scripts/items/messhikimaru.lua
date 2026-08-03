@@ -11,6 +11,10 @@ itemObject.onItemCheck = function(target, item, caster)
     return 0
 end
 
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENCHANTMENT, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.MESSHIKIMARU)
+end
+
 itemObject.onItemUse = function(target, user)
     if target:hasEquipped(xi.item.MESSHIKIMARU) then
         target:addStatusEffect(xi.effect.ENCHANTMENT, { duration = 600, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.MESSHIKIMARU })

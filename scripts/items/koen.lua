@@ -2,17 +2,21 @@
 -- ID: 17828
 -- Item: Koen
 -- Enchantment: Enfire
--- Duration:
+-- Duration: 3 Minutes
 -----------------------------------
 ---@type TItem
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.KOEN) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.KOEN) then
         target:delStatusEffect(xi.effect.ENFIRE, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.KOEN)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENFIRE, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.KOEN)
 end
 
 itemObject.onItemUse = function(target, user)
@@ -22,16 +26,16 @@ itemObject.onItemUse = function(target, user)
 end
 
 itemObject.onEffectGain = function(target, effect)
-        local magicskill = target:getSkillLevel(xi.skill.ENHANCING_MAGIC)
-        local potency = 0
+    local magicskill = target:getSkillLevel(xi.skill.ENHANCING_MAGIC)
+    local potency = 0
 
-        if magicskill <= 200 then
-            potency = 3 + math.floor(6 * magicskill / 100)
-        elseif magicskill > 200 then
-            potency = 5 + math.floor(5 * magicskill / 100)
-        end
+    if magicskill <= 200 then
+        potency = 3 + math.floor(6 * magicskill / 100)
+    elseif magicskill > 200 then
+        potency = 5 + math.floor(5 * magicskill / 100)
+    end
 
-        potency = utils.clamp(potency, 3, 25)
+    potency = utils.clamp(potency, 3, 25)
     effect:addMod(xi.mod.ENSPELL, xi.element.FIRE)
     effect:addMod(xi.mod.ENSPELL_DMG, potency)
     effect:addMod(xi.mod.ENSPELL_CHANCE, 100)

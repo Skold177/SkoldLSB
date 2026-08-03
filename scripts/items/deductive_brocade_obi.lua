@@ -1,6 +1,6 @@
 -----------------------------------
 -- ID: 15861
--- Item: deductive_brocade_obi
+-- Item: Deductive Brocade Obi
 -- Item Effect: MND+10
 -- Duration: 3 Minutes
 -----------------------------------
@@ -8,11 +8,15 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, item, caster)
-    if target:getStatusEffectBySource(xi.effect.MND_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DEDUCTIVE_BROCADE_OBI) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.MND_BOOST, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DEDUCTIVE_BROCADE_OBI) then
         target:delStatusEffect(xi.effect.MND_BOOST, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DEDUCTIVE_BROCADE_OBI)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.MND_BOOST, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.DEDUCTIVE_BROCADE_OBI)
 end
 
 itemObject.onItemUse = function(target, user)

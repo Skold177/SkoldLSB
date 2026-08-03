@@ -8,11 +8,15 @@
 local itemObject = {}
 
 itemObject.onItemCheck = function(target, user)
-    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.VULCAN_DEGEN) ~= nil then
+    if target:getStatusEffectBySource(xi.effect.ENFIRE, xi.effectSourceType.EQUIPPED_ITEM, xi.item.VULCAN_DEGEN) then
         target:delStatusEffect(xi.effect.ENFIRE, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.VULCAN_DEGEN)
     end
 
     return 0
+end
+
+itemObject.onItemUnequip = function(target, item)
+    target:delStatusEffect(xi.effect.ENFIRE, nil, xi.effectSourceType.EQUIPPED_ITEM, xi.item.VULCAN_DEGEN)
 end
 
 itemObject.onItemUse = function(target, user)
@@ -29,8 +33,16 @@ itemObject.onItemUse = function(target, user)
 
         potency = utils.clamp(potency, 3, 25)
 
-        target:addStatusEffect(effect, { power = potency, duration = 180, origin = user, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.VULCAN_DEGEN })
+        target:addStatusEffect(effect, { power = potency, duration = 180, origin = user, flag = xi.effectFlag.ON_ZONE, sourceType = xi.effectSourceType.EQUIPPED_ITEM, sourceTypeParam = xi.item.VULCAN_DEGEN })
     end
+end
+
+itemObject.onEffectGain = function(target, effect)
+    effect:addMod(xi.mod.ENSPELL, xi.element.FIRE)
+    effect:addMod(xi.mod.ENSPELL_DMG, effect:getPower())
+end
+
+itemObject.onEffectLose = function(target, effect)
 end
 
 return itemObject
