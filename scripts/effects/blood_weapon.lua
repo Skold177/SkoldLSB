@@ -6,8 +6,6 @@
 local effectObject = {}
 
 effectObject.onEffectGain = function(target, effect)
-    effect:addMod(xi.mod.ENSPELL, 17)
-    effect:addMod(xi.mod.ENSPELL_DMG, effect:getPower())
 end
 
 effectObject.onEffectTick = function(target, effect)

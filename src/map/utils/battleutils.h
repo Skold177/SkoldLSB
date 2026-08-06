@@ -63,7 +63,7 @@ enum ENSPELL
     ENSPELL_II_WATER         = 14,
     ENSPELL_II_LIGHT         = 15,
     ENSPELL_II_DARK          = 16,
-    ENSPELL_BLOOD_WEAPON     = 17,
+    // 17 was Blood Weapon, which is gated on its status effect rather than Mod::ENSPELL
     ENSPELL_AUSPICE          = 18,
     ENSPELL_DRAIN_SAMBA      = 19,
     ENSPELL_ASPIR_SAMBA      = 20,

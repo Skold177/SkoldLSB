@@ -1388,24 +1388,10 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
         checkedPriorityWeaponAddEffect = true;
     }
 
-    if ((PAttacker->getMod(xi::Mod::ENSPELL) > 0 && // Enspell overwrites weapon effects
-         (PAttacker->getMod(xi::Mod::ENSPELL_CHANCE) == 0 || PAttacker->getMod(xi::Mod::ENSPELL_CHANCE) > xirand::GetRandomNumber(100))) ||
-        PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement means we deal enspell damage
+    // Blood Weapon is not an enspell: it procs off its own status effect and owns the swing while active
+    if (PAttacker->StatusEffectContainer->HasStatusEffect(xi::StatusEffect::BloodWeapon))
     {
-        static ActionProcAddEffect enspell_subeffects[8] = {
-            ActionProcAddEffect::FireDamage,
-            ActionProcAddEffect::IceDamage,
-            ActionProcAddEffect::WindDamage,
-            ActionProcAddEffect::EarthDamage,
-            ActionProcAddEffect::LightningDamage,
-            ActionProcAddEffect::WaterDamage,
-            ActionProcAddEffect::LightDamage,
-            ActionProcAddEffect::DarkDamage,
-        };
-
-        uint8 enspell = (uint8)PAttacker->getMod(xi::Mod::ENSPELL);
-
-        if (enspell == ENSPELL_BLOOD_WEAPON && PDefender->m_EcoSystem != xi::Ecosystem::Undead)
+        if (PDefender->m_EcoSystem != xi::Ecosystem::Undead)
         {
             Action->additionalEffect = ActionProcAddEffect::HPDrain;
             Action->addEffectMessage = MsgBasic::AddEffectHPDrained;
@@ -1425,7 +1411,28 @@ void HandleEnspell(CBattleEntity* PAttacker, CBattleEntity* PDefender, action_re
                 PChar->updatemask |= UPDATE_HP;
             }
         }
-        else if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
+
+        return;
+    }
+
+    if ((PAttacker->getMod(xi::Mod::ENSPELL) > 0 && // Enspell overwrites weapon effects
+         (PAttacker->getMod(xi::Mod::ENSPELL_CHANCE) == 0 || PAttacker->getMod(xi::Mod::ENSPELL_CHANCE) > xirand::GetRandomNumber(100))) ||
+        PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement means we deal enspell damage
+    {
+        static ActionProcAddEffect enspell_subeffects[8] = {
+            ActionProcAddEffect::FireDamage,
+            ActionProcAddEffect::IceDamage,
+            ActionProcAddEffect::WindDamage,
+            ActionProcAddEffect::EarthDamage,
+            ActionProcAddEffect::LightningDamage,
+            ActionProcAddEffect::WaterDamage,
+            ActionProcAddEffect::LightDamage,
+            ActionProcAddEffect::DarkDamage,
+        };
+
+        uint8 enspell = (uint8)PAttacker->getMod(xi::Mod::ENSPELL);
+
+        if (PAttacker->StatusEffectContainer->GetActiveRuneCount() > 0) // Rune Enhancement enspell damage, takes priority over all but blood weapon.
         {
             xi::StatusEffect highestRuneEffect = PAttacker->StatusEffectContainer->GetHighestRuneEffect();
             xi::StatusEffect newestRuneEffect  = PAttacker->StatusEffectContainer->GetNewestRuneEffect();
