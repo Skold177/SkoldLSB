@@ -1582,33 +1582,17 @@ auto CAutomatonController::TryTPMove() -> bool
         CMobSkill* PWSkill          = nullptr;
         int8       currentManeuvers = -1;
 
-        // Follows most matching maneuvers, then highest skill requirement, then highest skill ID.
-        auto hasSkillPriority = [&](const CMobSkill* PNewSkill, int8 newManeuvers)
-        {
-            if (newManeuvers != currentManeuvers)
-            {
-                return newManeuvers > currentManeuvers;
-            }
-
-            if (PNewSkill->getParam() != currentSkill)
-            {
-                return PNewSkill->getParam() > currentSkill;
-            }
-
-            return PWSkill && PNewSkill->getID() > PWSkill->getID();
-        };
-
-        bool attemptChain = (PAutomaton->getMod(xi::Mod::AUTO_TP_EFFICIENCY) != 0);
+        const auto autoTPThreshold = PAutomaton->getMod(xi::Mod::AUTO_TP_EFFICIENCY);
 
         const CStatusEffect* PSCEffect = PTarget->StatusEffectContainer->GetStatusEffect(xi::StatusEffect::Skillchain, 0);
 
         // Skillchain has been started, wait 3 seconds until skillchain window is open before executing weaponskill.
-        if (attemptChain && PSCEffect && PSCEffect->GetStartTime() + 3s >= timer::now())
+        if (autoTPThreshold != 0 && PSCEffect && PSCEffect->GetStartTime() + 3s >= timer::now())
         {
             return false;
         }
 
-        if (attemptChain)
+        if (autoTPThreshold != 0)
         {
             if (PSCEffect)
             {
@@ -1630,7 +1614,9 @@ auto CAutomatonController::TryTPMove() -> bool
 
                 for (auto* PSkill : validSkills)
                 {
-                    if (hasSkillPriority(PSkill, 1))
+                    // Skillchain WS selection ignores maneuvers and prioritizes the highest skill that will make a skillchain.
+                    if ((!PWSkill || PSkill->getParam() > currentSkill ||
+                         (PSkill->getParam() == currentSkill && PSkill->getID() > PWSkill->getID())))
                     {
                         std::list<SKILLCHAIN_ELEMENT> skillProperties;
                         skillProperties.emplace_back(static_cast<SKILLCHAIN_ELEMENT>(PSkill->getPrimarySkillchain()));
@@ -1638,21 +1624,26 @@ auto CAutomatonController::TryTPMove() -> bool
                         skillProperties.emplace_back(static_cast<SKILLCHAIN_ELEMENT>(PSkill->getTertiarySkillchain()));
                         if (battleutils::FormSkillchain(resonanceProperties, skillProperties) != SC_NONE)
                         {
-                            currentManeuvers = 1;
-                            currentSkill     = PSkill->getParam();
-                            PWSkill          = PSkill;
+                            currentSkill = PSkill->getParam();
+                            PWSkill      = PSkill;
                         }
                     }
                 }
             }
         }
 
-        if (!attemptChain || (currentManeuvers == -1 && PAutomaton->PMaster && PAutomaton->PMaster->health.tp < PAutomaton->getMod(xi::Mod::AUTO_TP_EFFICIENCY)))
+        if (!PWSkill &&
+            (autoTPThreshold == 0 || !PAutomaton->PMaster || PAutomaton->PMaster->health.tp <= autoTPThreshold))
         {
             for (auto* PSkill : validSkills)
             {
                 int8 maneuvers = luautils::OnAutomatonAbilityCheck(PTarget, PAutomaton, PSkill);
-                if (maneuvers > -1 && hasSkillPriority(PSkill, maneuvers))
+                // Normal WS Selection follows the priority of maneuvers, then skill requirement, then skill ID.
+                if (maneuvers > -1 &&
+                    (!PWSkill || maneuvers > currentManeuvers ||
+                     (maneuvers == currentManeuvers &&
+                      (PSkill->getParam() > currentSkill ||
+                       (PSkill->getParam() == currentSkill && PSkill->getID() > PWSkill->getID())))))
                 {
                     currentManeuvers = maneuvers;
                     currentSkill     = PSkill->getParam();
@@ -1661,8 +1652,8 @@ auto CAutomatonController::TryTPMove() -> bool
             }
         }
 
-        // No WS was chosen (waiting on master's TP to skillchain probably)
-        if (currentManeuvers == -1)
+        // Hold TP while waiting for a skillchain to close.
+        if (!PWSkill)
         {
             return false;
         }
