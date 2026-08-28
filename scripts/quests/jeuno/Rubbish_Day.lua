@@ -173,6 +173,22 @@ quest.sections =
             },
         },
     },
+
+    {
+        check = function(player, status, vars)
+            return status == xi.questStatus.QUEST_COMPLETED
+        end,
+
+        [xi.zone.LOWER_JEUNO] =
+        {
+            ['Chululu'] =
+            {
+                onTrigger = function(player, npc)
+                    return quest:event(57) -- Standard dialog after completion
+                end,
+            },
+        },
+    },
 }
 
 return quest
