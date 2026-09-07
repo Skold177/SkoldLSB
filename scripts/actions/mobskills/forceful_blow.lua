@@ -8,7 +8,10 @@
 local mobskillObject = {}
 
 mobskillObject.onMobSkillCheck = function(target, mob, skill)
-    if mob:getAnimationSub() == 0 then
+    if
+        mob:getAnimationSub() == 0 and
+        mob:getMainJob() ~= xi.job.NIN
+    then
         return 1
     end
 
