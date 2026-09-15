@@ -2051,6 +2051,7 @@ templates:
   Splinterspine_Grukjuk:
     id:            3736
     species:       orc
+    type:          [notorious]
     skill_list_id: 189
     attributes:
       combat:
