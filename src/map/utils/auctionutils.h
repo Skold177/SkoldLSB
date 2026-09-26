@@ -21,6 +21,8 @@
 
 #pragma once
 
+#include "data/enums/zone.h"
+
 #include <cstdint>
 
 struct GP_AUC_PARAM_BID;
@@ -30,6 +32,8 @@ class CCharEntity;
 
 namespace auctionutils
 {
+
+auto CalculateFee(xi::ZoneId zoneId, uint32_t price, bool isStack) -> uint32_t;
 
 void SellingItems(CCharEntity* PChar, GP_AUC_PARAM_ASKCOMMIT param);
 void OpenListOfSales(CCharEntity* PChar);

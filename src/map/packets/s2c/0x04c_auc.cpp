@@ -40,21 +40,9 @@ GP_SERV_COMMAND_AUC::GP_SERV_COMMAND_AUC(const GP_CLI_COMMAND_AUC_COMMAND action
     packet.Result       = 1; // Auction House open
 }
 
-GP_SERV_COMMAND_AUC::GP_SERV_COMMAND_AUC(const GP_CLI_COMMAND_AUC_COMMAND action, const CItem* PItem, const uint8 quantity, const uint32 price)
+GP_SERV_COMMAND_AUC::GP_SERV_COMMAND_AUC(const GP_CLI_COMMAND_AUC_COMMAND action, const CItem* PItem, const uint8 quantity, const uint32 auctionFee)
 {
     auto& packet = this->data();
-
-    uint32 auctionFee = 0;
-    if (quantity == 0) // This is a stack..Yes, zero for stacks.. Why is this being called quantity?
-    {
-        auctionFee = static_cast<uint32>(settings::get<uint32>("map.AH_BASE_FEE_STACKS") + (price * settings::get<float>("map.AH_TAX_RATE_STACKS") / 100));
-    }
-    else // This is a single item.
-    {
-        auctionFee = static_cast<uint32>(settings::get<uint32>("map.AH_BASE_FEE_SINGLE") + (price * settings::get<float>("map.AH_TAX_RATE_SINGLE") / 100));
-    }
-
-    auctionFee = std::clamp<uint32>(auctionFee, 0, settings::get<uint32>("map.AH_MAX_FEE"));
 
     packet.Command                       = action;
     packet.AucWorkIndex                  = -1;

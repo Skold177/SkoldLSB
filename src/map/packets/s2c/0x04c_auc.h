@@ -46,5 +46,5 @@ public:
     GP_SERV_COMMAND_AUC(GP_CLI_COMMAND_AUC_COMMAND action, uint8 slot, const CCharEntity* PChar); // Send the list of items sold by a character
     GP_SERV_COMMAND_AUC(GP_CLI_COMMAND_AUC_COMMAND action, uint8 message, uint16 itemid, uint32 price, uint8 quantity, uint8 stacksize);
     GP_SERV_COMMAND_AUC(GP_CLI_COMMAND_AUC_COMMAND action, uint8 message, const CCharEntity* PChar, uint8 slot, bool keepItem);
-    GP_SERV_COMMAND_AUC(GP_CLI_COMMAND_AUC_COMMAND action, const CItem* PItem, uint8 quantity, uint32 price);
+    GP_SERV_COMMAND_AUC(GP_CLI_COMMAND_AUC_COMMAND action, const CItem* PItem, uint8 quantity, uint32 auctionFee);
 };

@@ -47,12 +47,24 @@ xi.settings.map =
     SELF_UNSTUCK_ENABLED  = false,
     SELF_UNSTUCK_COOLDOWN = 86400, -- Cooldown in seconds (default: 24 hours)
 
-    -- AH fee structure, defaults are retail.
+    -- Global AH listing fees. Tax rates are percentages.
     AH_BASE_FEE_SINGLE = 1,
     AH_BASE_FEE_STACKS = 4,
     AH_TAX_RATE_SINGLE = 1.0,
     AH_TAX_RATE_STACKS = 0.5,
     AH_MAX_FEE         = 10000,
+
+    -- Overrides for San d'Oria, Bastok, and Windurst. -1 uses the corresponding global setting.
+    AH_STARTER_CITY_BASE_FEE_SINGLE = -1,
+    AH_STARTER_CITY_BASE_FEE_STACKS = -1,
+    AH_STARTER_CITY_TAX_RATE_SINGLE = -1,
+    AH_STARTER_CITY_TAX_RATE_STACKS = -1,
+
+    -- Al Zahbi only; Whitegate uses the global settings. The fee cap remains shared.
+    AH_AL_ZAHBI_BASE_FEE_SINGLE = -1,
+    AH_AL_ZAHBI_BASE_FEE_STACKS = -1,
+    AH_AL_ZAHBI_TAX_RATE_SINGLE = -1,
+    AH_AL_ZAHBI_TAX_RATE_STACKS = -1,
 
     -- Max open listings per player, 0 = no limit. (Default 7)
     -- Note = Settings over 7 may need client-side plugin to work under all circumstances.

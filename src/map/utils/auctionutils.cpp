@@ -36,6 +36,8 @@
 #include "utils/charutils.h"
 #include "utils/itemutils.h"
 
+#include <algorithm>
+
 namespace
 {
 
@@ -51,6 +53,37 @@ const auto isPartiallyUsed = [](CItem* PItem) -> bool
 };
 
 } // namespace
+
+auto auctionutils::CalculateFee(const xi::ZoneId zoneId, const uint32_t price, const bool isStack) -> uint32_t
+{
+    int32_t regionalBaseFee = -1;
+    float   regionalTaxRate = -1.0f;
+    switch (zoneId)
+    {
+        case xi::ZoneId::SouthernSanDoria:
+        case xi::ZoneId::PortSanDoria:
+        case xi::ZoneId::BastokMines:
+        case xi::ZoneId::BastokMarkets:
+        case xi::ZoneId::WindurstWalls:
+        case xi::ZoneId::WindurstWoods:
+            regionalBaseFee = settings::get<int32_t>(isStack ? "map.AH_STARTER_CITY_BASE_FEE_STACKS" : "map.AH_STARTER_CITY_BASE_FEE_SINGLE");
+            regionalTaxRate = settings::get<float>(isStack ? "map.AH_STARTER_CITY_TAX_RATE_STACKS" : "map.AH_STARTER_CITY_TAX_RATE_SINGLE");
+            break;
+        case xi::ZoneId::AlZahbi:
+            regionalBaseFee = settings::get<int32_t>(isStack ? "map.AH_AL_ZAHBI_BASE_FEE_STACKS" : "map.AH_AL_ZAHBI_BASE_FEE_SINGLE");
+            regionalTaxRate = settings::get<float>(isStack ? "map.AH_AL_ZAHBI_TAX_RATE_STACKS" : "map.AH_AL_ZAHBI_TAX_RATE_SINGLE");
+            break;
+        default:
+            break;
+    }
+
+    const auto taxRate    = regionalTaxRate >= 0.0f ? regionalTaxRate : settings::get<float>(isStack ? "map.AH_TAX_RATE_STACKS" : "map.AH_TAX_RATE_SINGLE");
+    const auto baseFee    = regionalBaseFee >= 0 ? static_cast<uint32_t>(regionalBaseFee) : settings::get<uint32_t>(isStack ? "map.AH_BASE_FEE_STACKS" : "map.AH_BASE_FEE_SINGLE");
+    const auto maxFee     = settings::get<uint32_t>("map.AH_MAX_FEE");
+    const auto auctionFee = static_cast<uint32_t>(baseFee + price * taxRate / 100);
+
+    return std::min(auctionFee, maxFee);
+}
 
 void auctionutils::SellingItems(CCharEntity* PChar, GP_AUC_PARAM_ASKCOMMIT param)
 {
@@ -77,7 +110,8 @@ void auctionutils::SellingItems(CCharEntity* PChar, GP_AUC_PARAM_ASKCOMMIT param
             return;
         }
 
-        PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::AskCommit, PItem, param.ItemStacks, param.Commission);
+        const auto auctionFee = CalculateFee(PChar->getZone(), param.Commission, param.ItemStacks == 0);
+        PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::AskCommit, PItem, param.ItemStacks, auctionFee);
     }
 }
 
@@ -156,24 +190,14 @@ void auctionutils::ProofOfPurchase(CCharEntity* PChar, GP_AUC_PARAM_LOT param)
             return;
         }
 
-        uint32 auctionFee = 0;
-        if (param.ItemStacks == 0) // Selling a stack
+        if (param.ItemStacks == 0 && (PItem->getStackSize() == 1 || PItem->getStackSize() != PItem->getQuantity()))
         {
-            if (PItem->getStackSize() == 1 || PItem->getStackSize() != PItem->getQuantity())
-            {
-                ShowErrorFmt("AH: Incorrect quantity of item {}", PItem->getName());
-                PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // Failed to place up
-                return;
-            }
-            auctionFee = static_cast<uint32>(settings::get<uint32>("map.AH_BASE_FEE_STACKS") + (param.LimitPrice * settings::get<float>("map.AH_TAX_RATE_STACKS") / 100));
-        }
-        else // Selling a single item
-        {
-            auctionFee = static_cast<uint32>(settings::get<uint32>("map.AH_BASE_FEE_SINGLE") + (param.LimitPrice * settings::get<float>("map.AH_TAX_RATE_SINGLE") / 100));
+            ShowErrorFmt("AH: Incorrect quantity of item {}", PItem->getName());
+            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // Failed to place up
+            return;
         }
 
-        auctionFee = std::clamp<uint32>(auctionFee, 0, settings::get<uint32>("map.AH_MAX_FEE"));
-
+        const auto auctionFee = CalculateFee(PChar->getZone(), param.LimitPrice, param.ItemStacks == 0);
         if (!transaction->pay(auctionFee))
         {
             PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // Not enough gil to pay fee
