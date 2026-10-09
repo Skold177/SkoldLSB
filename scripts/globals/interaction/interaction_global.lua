@@ -139,4 +139,8 @@ function InteractionGlobal.onEventUpdate(player, csid, option, npc, fallbackFn)
     return InteractionGlobal.lookup:onEventUpdate(player, csid, option, npc, fallbackFn)
 end
 
+function InteractionGlobal.onFishingCheck(player)
+    return InteractionGlobal.lookup:onFishingCheck(player)
+end
+
 return InteractionGlobal

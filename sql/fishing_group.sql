@@ -71,7 +71,6 @@ INSERT INTO `fishing_group` VALUES (3,14242,500,300,9);    -- Rusty Subligar
 
 -- Port Windurst, Whole Zone
 
-INSERT INTO `fishing_group` VALUES (4,591,1000,300,9);     -- Ripped Cap
 INSERT INTO `fishing_group` VALUES (4,624,1000,300,9);     -- Clump Of Pamtam Kelp
 INSERT INTO `fishing_group` VALUES (4,4360,1000,500,15);   -- Bastore Sardine
 INSERT INTO `fishing_group` VALUES (4,4461,250,230,6);     -- Bastore Bream
@@ -1014,7 +1013,6 @@ INSERT INTO `fishing_group` VALUES (93,14242,500,300,9);   -- Rusty Subligar
 -- Kazham, Whole Zone
 
 INSERT INTO `fishing_group` VALUES (94,90,900,300,9);      -- Rusty Bucket
-INSERT INTO `fishing_group` VALUES (94,591,1000,300,9);    -- Ripped Cap
 INSERT INTO `fishing_group` VALUES (94,624,1000,300,9);    -- Clump Of Pamtam Kelp
 INSERT INTO `fishing_group` VALUES (94,688,500,200,6);     -- Arrowwood Log
 INSERT INTO `fishing_group` VALUES (94,4360,1000,500,15);  -- Bastore Sardine
@@ -1340,7 +1338,6 @@ INSERT INTO `fishing_group` VALUES (123,13456,300,275,6);  -- Silver Ring
 
 -- Aht Urhgan Whitegate, Whole Zone
 
-INSERT INTO `fishing_group` VALUES (124,2341,1000,300,9);  -- Hydrogauge
 INSERT INTO `fishing_group` VALUES (124,5447,1000,500,15); -- Denizanasi
 INSERT INTO `fishing_group` VALUES (124,5448,850,290,7);   -- Kalamar
 INSERT INTO `fishing_group` VALUES (124,5449,1000,500,15); -- Hamsi
@@ -1349,7 +1346,6 @@ INSERT INTO `fishing_group` VALUES (124,14242,500,300,9);  -- Rusty Subligar
 -- Al Zahbi, Whole Zone
 
 INSERT INTO `fishing_group` VALUES (125,90,900,300,9);     -- Rusty Bucket
-INSERT INTO `fishing_group` VALUES (125,2341,1000,300,9);  -- Hydrogauge
 INSERT INTO `fishing_group` VALUES (125,4310,1000,500,15); -- Tiny Goldfish
 INSERT INTO `fishing_group` VALUES (125,4401,1000,1000,36);-- Moat Carp
 INSERT INTO `fishing_group` VALUES (125,4472,1000,500,15); -- Crayfish
@@ -1432,7 +1428,6 @@ INSERT INTO `fishing_group` VALUES (132,14117,500,300,9);  -- Rusty Leggings
 
 -- Nashmau, Whole Zone
 
-INSERT INTO `fishing_group` VALUES (133,2341,1000,300,9);  -- Hydrogauge
 INSERT INTO `fishing_group` VALUES (133,5133,400,100,4);   -- Pterygotus
 INSERT INTO `fishing_group` VALUES (133,5453,1000,290,7);  -- Istakoz
 INSERT INTO `fishing_group` VALUES (133,5454,400,230,6);   -- Mercanbaligi
@@ -1499,7 +1494,6 @@ INSERT INTO `fishing_group` VALUES (137,14242,500,300,9);  -- Rusty Subligar
 
 -- Silver Sea route to Nashmau, Whole Zone / Silver Sea route to Al Zahbi, Whole Zone
 
-INSERT INTO `fishing_group` VALUES (138,2341,1000,300,9);  -- Hydrogauge
 INSERT INTO `fishing_group` VALUES (138,5140,500,50,6);    -- Kalkanbaligi
 INSERT INTO `fishing_group` VALUES (138,5448,850,290,7);   -- Kalamar
 INSERT INTO `fishing_group` VALUES (138,5449,1000,500,15); -- Hamsi

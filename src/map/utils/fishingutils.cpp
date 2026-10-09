@@ -2264,26 +2264,42 @@ fishresponse_t* FishingCheck(CCharEntity* PChar, uint8 fishingSkill, rod_t* rod,
             if (item->quest_only || item->reqKeyItem == xi::KeyItem::None || charutils::hasKeyItem(PChar, item->reqKeyItem))
             { // Key item okay
                 uint16 hookChance = 100;
-                if (item->quest < 255 && item->log < 255)
-                {
-                    if (charutils::getQuestStatus(PChar, item->log, item->quest) == QUEST_ACCEPTED)
-                    {
-                        ItemHookPool.insert(std::make_pair(item, 100));
-                        ItemPoolWeight += 1000;
-                    }
-                }
-                else
-                {
-                    if (!item->quest_only && isFishPoolDepleted(PChar->getZone(), area->areaId, item->fishID))
-                    {
-                        NoCatchList.insert(item->fishID);
-                    }
 
-                    float  chanceMultiplier = (float)item->rarity / 1000.0f;
-                    uint16 actualHookChance = (uint16)std::floor(hookChance * chanceMultiplier);
-                    ItemHookChanceTotal += actualHookChance;
-                    ItemHookPool.insert(std::make_pair(item, actualHookChance));
+                if (!item->quest_only && isFishPoolDepleted(PChar->getZone(), area->areaId, item->fishID))
+                {
+                    NoCatchList.insert(item->fishID);
                 }
+
+                float  chanceMultiplier = static_cast<float>(item->rarity) / 1000.0f;
+                uint16 actualHookChance = static_cast<uint16>(std::floor(hookChance * chanceMultiplier));
+                ItemHookChanceTotal += actualHookChance;
+                ItemHookPool.insert(std::make_pair(item, actualHookChance));
+            }
+        }
+    }
+
+    for (const auto itemId : luautils::OnFishingCheck(PChar))
+    {
+        auto* item = GetFish(itemId);
+        if (item == nullptr)
+        {
+            ShowWarningFmt("fishingutils: onFishingCheck returned item {} which is not in fishing_fish", itemId);
+            continue;
+        }
+
+        if (item->quest_only)
+        {
+            if (ItemHookPool.insert(std::make_pair(item, 100)).second)
+            {
+                ItemPoolWeight += 1000;
+            }
+        }
+        else
+        {
+            const auto hookChance = static_cast<uint16>(std::floor(100.0f * item->rarity / 1000.0f));
+            if (ItemHookPool.insert(std::make_pair(item, hookChance)).second)
+            {
+                ItemHookChanceTotal += hookChance;
             }
         }
     }

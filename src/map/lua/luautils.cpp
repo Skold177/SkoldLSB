@@ -4946,6 +4946,41 @@ int32 OnSteal(CBattleEntity* PChar, CBattleEntity* PMob, CAbility* PAbility, act
     return 0;
 }
 
+auto OnFishingCheck(CCharEntity* PChar) -> std::vector<uint32>
+{
+    TracyZoneScoped;
+
+    std::vector<uint32> itemIds;
+
+    if (PChar == nullptr)
+    {
+        return itemIds;
+    }
+
+    auto onFishingCheckFramework = lua["InteractionGlobal"]["onFishingCheck"];
+
+    auto result = onFishingCheckFramework(PChar);
+    if (!result.valid())
+    {
+        sol::error err = result;
+        ShowError("luautils::onFishingCheck: %s", err.what());
+        return itemIds;
+    }
+
+    if (result.get_type(0) == sol::type::table)
+    {
+        for (const auto& [_, itemId] : result.get<sol::table>(0))
+        {
+            if (itemId.get_type() == sol::type::number)
+            {
+                itemIds.emplace_back(itemId.as<uint32>());
+            }
+        }
+    }
+
+    return itemIds;
+}
+
 bool OnCanUseSpell(CBattleEntity* PChar, CSpell* PSpell) // triggers when CanUseSpell is invoked on spell.cpp for PCs only
 {
     TracyZoneScoped;
