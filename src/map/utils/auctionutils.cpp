@@ -30,9 +30,12 @@
 
 #include "packets/c2s/0x04e_auc.h"
 #include "packets/s2c/0x01d_item_same.h"
+#include "packets/s2c/0x01e_item_num.h"
+#include "packets/s2c/0x020_item_attr.h"
 #include "packets/s2c/0x04c_auc.h"
 
 #include "items/transactions/item_claim.h"
+#include "lua/luautils.h"
 #include "utils/charutils.h"
 #include "utils/itemutils.h"
 
@@ -140,6 +143,14 @@ void auctionutils::ProofOfPurchase(CCharEntity* PChar, GP_AUC_PARAM_LOT param)
                      param.ItemWorkIndex,
                      param.ItemStacks);
 
+    if (PChar->status == xi::Status::Shutdown || param.ItemWorkIndex == 0 ||
+        param.ItemWorkIndex > PChar->getStorage(LOC_INVENTORY)->GetSize() || param.ItemStacks > 1)
+    {
+        return;
+    }
+
+    // Only claim the item here. ItemClaimTransaction's pay/take perform separate
+    // writes and compensating undos, which must not be mixed with SQL rollback.
     auto transaction = ItemClaimTransaction::start(PChar);
     if (!transaction)
     {
@@ -148,7 +159,7 @@ void auctionutils::ProofOfPurchase(CCharEntity* PChar, GP_AUC_PARAM_LOT param)
 
     CItem* PItem = transaction->claimSlot(LOC_INVENTORY, param.ItemWorkIndex);
 
-    if (PItem && !PItem->hasFlag(ItemFlag::NoAuction) && PItem->getQuantity() >= param.ItemStacks)
+    if (PItem && !PItem->isType(ITEM_CURRENCY) && !PItem->hasFlag(ItemFlag::NoAuction) && PItem->getQuantity() > 0)
     {
         if (isPartiallyUsed(PItem))
         {
@@ -174,63 +185,160 @@ void auctionutils::ProofOfPurchase(CCharEntity* PChar, GP_AUC_PARAM_LOT param)
 
         auctionFee = std::clamp<uint32>(auctionFee, 0, settings::get<uint32>("map.AH_MAX_FEE"));
 
-        if (!transaction->pay(auctionFee))
+        CItem* PGil = PChar->getStorage(LOC_INVENTORY)->GetItem(0);
+        if (!PGil || PGil->getQuantity() < auctionFee)
         {
             PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // Not enough gil to pay fee
             return;
         }
 
-        // Get the current number of items the player has for sale
-        const auto ahListings = [&]() -> uint32
-        {
-            const auto rset = db::preparedStmt("SELECT COUNT(*) FROM auction_house WHERE seller = ? AND sale = 0", PChar->id);
-            if (rset && rset->rowsCount() && rset->next())
-            {
-                return rset->get<uint32>(0);
-            }
-
-            return 0;
-        }();
-
-        const auto ahListLimit = settings::get<uint8>("map.AH_LIST_LIMIT");
-        if (ahListLimit && ahListings >= ahListLimit)
-        {
-            DebugAuctionsFmt("AH: Player {} has reached the AH listing limit of {}", PChar->getName(), ahListLimit);
-            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // Failed to place up
-            return;
-        }
-
-        const auto listedQuantity = static_cast<int32>(param.ItemStacks != 0 ? 1 : PItem->getStackSize());
+        const auto listedQuantity = static_cast<uint32>(param.ItemStacks != 0 ? 1 : PItem->getStackSize());
         const auto listedItemId   = PItem->getID();
-        const auto listedItemName = PItem->getName();
+        const auto oldQuantity    = PItem->getQuantity();
+        const auto newQuantity    = oldQuantity - listedQuantity;
+        const auto oldGil         = PGil->getQuantity();
+        const auto ahListLimit    = settings::get<uint32>("map.AH_LIST_LIMIT");
+        bool       listed         = false;
 
-        if (!transaction->take(LOC_INVENTORY, param.ItemWorkIndex, listedQuantity))
+        // Inventory quantities and client packets change only after COMMIT.
+        // A dropped SQL connection cannot retry INSERT inside this transaction.
+        const auto success = db::transaction(
+            [&]()
+            {
+                // Serialize listings for this seller, including when the fee is zero.
+                const auto gil = db::preparedStmt("SELECT itemId, quantity FROM char_inventory WHERE charid = ? AND location = ? AND slot = 0 FOR UPDATE",
+                                                  PChar->id,
+                                                  LOC_INVENTORY);
+                if (!gil || !gil->next() || gil->get<uint16>("itemId") != PGil->getID() || gil->get<uint32>("quantity") != oldGil)
+                {
+                    throw std::runtime_error(fmt::format("AH: gil does not match inventory for {} ({})", PChar->getName(), PChar->id));
+                }
+
+                const auto count = db::preparedStmt("SELECT COUNT(*) FROM auction_house WHERE seller = ? AND sale = 0", PChar->id);
+                if (!count || !count->next())
+                {
+                    throw std::runtime_error(fmt::format("AH: could not count listings for {} ({})", PChar->getName(), PChar->id));
+                }
+
+                if (ahListLimit && count->get<uint32>(0) >= ahListLimit)
+                {
+                    DebugAuctionsFmt("AH: Player {} has reached the AH listing limit of {}", PChar->getName(), ahListLimit);
+                    return;
+                }
+
+                const auto removed = newQuantity == 0
+                                         ? db::preparedStmt("DELETE FROM char_inventory WHERE charid = ? AND location = ? AND slot = ? AND itemId = ? AND quantity = ? AND bazaar = 0",
+                                                            PChar->id,
+                                                            LOC_INVENTORY,
+                                                            param.ItemWorkIndex,
+                                                            listedItemId,
+                                                            oldQuantity)
+                                         : db::preparedStmt("UPDATE char_inventory SET quantity = ? WHERE charid = ? AND location = ? AND slot = ? AND itemId = ? AND quantity = ? AND bazaar = 0",
+                                                            newQuantity,
+                                                            PChar->id,
+                                                            LOC_INVENTORY,
+                                                            param.ItemWorkIndex,
+                                                            listedItemId,
+                                                            oldQuantity);
+                if (!removed || removed->rowsAffected() != 1)
+                {
+                    throw std::runtime_error(fmt::format("AH: item {} in slot {} does not match inventory for {} ({})",
+                                                         listedItemId,
+                                                         param.ItemWorkIndex,
+                                                         PChar->getName(),
+                                                         PChar->id));
+                }
+
+                if (auctionFee != 0)
+                {
+                    const auto paid = db::preparedStmt("UPDATE char_inventory SET quantity = ? WHERE charid = ? AND location = ? AND slot = 0 AND itemId = ? AND quantity = ?",
+                                                       oldGil - auctionFee,
+                                                       PChar->id,
+                                                       LOC_INVENTORY,
+                                                       PGil->getID(),
+                                                       oldGil);
+                    if (!paid || paid->rowsAffected() != 1)
+                    {
+                        throw std::runtime_error(fmt::format("AH: could not charge listing fee for {} ({})", PChar->getName(), PChar->id));
+                    }
+                }
+
+                const auto inserted = db::preparedStmt("INSERT INTO auction_house(itemid, stack, seller, seller_name, date, price) VALUES(?, ?, ?, ?, ?, ?)",
+                                                       listedItemId,
+                                                       param.ItemStacks == 0,
+                                                       PChar->id,
+                                                       PChar->getName(),
+                                                       earth_time::timestamp(),
+                                                       param.LimitPrice);
+                if (!inserted || inserted->rowsAffected() != 1)
+                {
+                    throw std::runtime_error(fmt::format("AH: could not list item {} for {} ({})", listedItemId, PChar->getName(), PChar->id));
+                }
+
+                listed = true;
+            });
+
+        if (!success)
         {
-            ShowErrorFmt("AH: Cannot take item {} from {} to list it", listedItemName, PChar->getName());
-            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // failed to place up
+            // COMMIT may have reached the database even if its reply was lost.
+            // Reload on login instead of refunding or using an uncertain inventory.
+            ShowErrorFmt("AH: listing failed for {} ({}), disconnecting to reload inventory", PChar->getName(), PChar->id);
+            charutils::ForceLogout(PChar);
             return;
         }
 
-        if (!db::preparedStmt("INSERT INTO auction_house(itemid, stack, seller, seller_name, date, price) VALUES(?, ?, ?, ?, ?, ?)",
-                              listedItemId,
-                              param.ItemStacks == 0,
-                              PChar->id,
-                              PChar->getName(),
-                              earth_time::timestamp(),
-                              param.LimitPrice))
+        if (!listed)
         {
-            ShowErrorFmt("AH: Cannot insert item {} to database, returning it", listedItemName);
-            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0); // failed to place up
+            PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 197, 0, 0, 0, 0);
             return;
+        }
+
+        PGil->setQuantity(oldGil - auctionFee);
+        PChar->pushPacket<GP_SERV_COMMAND_ITEM_NUM>(LOC_INVENTORY, 0, PGil->getQuantity());
+
+        std::unique_ptr<CItem> removed;
+        if (newQuantity != 0)
+        {
+            PItem->setQuantity(newQuantity);
+            PChar->pushPacket<GP_SERV_COMMAND_ITEM_NUM>(LOC_INVENTORY, param.ItemWorkIndex, newQuantity);
+        }
+        else
+        {
+            removed = PChar->getStorage(LOC_INVENTORY)->RemoveItem(param.ItemWorkIndex);
+            PChar->pushPacket<GP_SERV_COMMAND_ITEM_ATTR>(nullptr, LOC_INVENTORY, param.ItemWorkIndex);
         }
 
         if (!transaction->commit())
         {
+            charutils::ForceLogout(PChar);
             return;
         }
 
-        PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 1, 0, 0, 0, 0);                                     // Merchandise put up on auction msg
-        PChar->pushPacket<GP_SERV_COMMAND_AUC>(static_cast<GP_CLI_COMMAND_AUC_COMMAND>(0x0C), static_cast<uint8>(ahListings), PChar); // Inform history of slot
+        if (removed)
+        {
+            luautils::OnItemDrop(PChar, removed.get());
+            if (PChar->inventorySyncState().hasEquipChange(removed.get()))
+            {
+                PChar->inventorySyncState().clearEquipChanges();
+                PChar->resyncEquipment();
+            }
+        }
+
+        PChar->pushPacket<GP_SERV_COMMAND_ITEM_SAME>(PChar);
+        PChar->pushPacket<GP_SERV_COMMAND_AUC>(GP_CLI_COMMAND_AUC_COMMAND::LotIn, 1, 0, 0, 0, 0); // Merchandise put up on auction msg
+
+        // The client indexes the displayed page, not the seller's total listings.
+        if (PChar->m_ah_history.size() < 7)
+        {
+            const auto slot = static_cast<uint8>(PChar->m_ah_history.size());
+            PChar->m_ah_history.emplace_back(AuctionHistory_t{
+                .itemid = listedItemId,
+                .stack  = static_cast<uint8>(param.ItemStacks == 0),
+                .price  = param.LimitPrice,
+                .status = 0,
+            });
+            PChar->pushPacket<GP_SERV_COMMAND_AUC>(static_cast<GP_CLI_COMMAND_AUC_COMMAND>(0x0C), slot, PChar);
+        }
     }
 }
 

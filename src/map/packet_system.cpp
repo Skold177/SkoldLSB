@@ -374,6 +374,12 @@ constexpr auto packetHandlers_ = buildPacketHandlers();
 
 void PacketSystem::dispatch(uint16 packetId, MapSession* PSession, CCharEntity* PChar, CBasicPacket& data)
 {
+    // ForceLogout must also stop later packets in the same incoming bundle.
+    if (PChar->status == xi::Status::Shutdown)
+    {
+        return;
+    }
+
     LogWith({ "char", { { "id", PChar->id }, { "name", PChar->getName() } } },
             { "packet", { { "id", packetId } } });
 
