@@ -7516,6 +7516,7 @@ xi.item =
     KOGA_SARASHI                        = 15877,
     WYRM_BELT                           = 15878,
     SAOTOME_KOSHI_ATE                   = 15879,
+    KEY_RING_BELT                       = 15880,
     TALISMAN_OBI                        = 15881,
     POTENT_BELT                         = 15884,
     SPECTRAL_BELT                       = 15885,

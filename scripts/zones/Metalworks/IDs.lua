@@ -50,6 +50,10 @@ zones[xi.zone.METALWORKS] =
         DETONATOR_LEARNED             = 9066,  -- You have learned the weapon skill Detonator!
         TAKIYAH_CLOSED_DIALOG         = 10007, -- Maybe someday I'll be able to sell goods from Qufim Island... Someday...
         TAKIYAH_OPEN_DIALOG           = 10008, -- Hey, it's your lucky day! I've got a fresh batch of goods straight from the island of Qufim!
+        TIME_LIMIT_EXCEEDED           = 10256, -- You have exceeded your time limit. You are no longer participating in the quest.
+        FIRST_SWITCH_DEACTIVATED      = 10636, -- The first switch has been deactivated.
+        NOISE_FROM_TEMPLE             = 10645, -- You hear a noise from the direction of the Temple of the Goddess.
+        SALIM_LEFT_SOMETHING          = 10688, -- It looks like Salim has left something here...
         CELEBRATORY_GOODS             = 10855, -- An assortment of celebratory goods is available for purchase.
         HOMEPOINT_SET                 = 11043, -- Home point set!
     },
